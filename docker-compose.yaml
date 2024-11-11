@@ -1,0 +1,9 @@
+
+services:
+  willsmith:
+    # Currently, there is only a beta version.
+    image: zsio/willsmith:v0.0.1-beta.4
+    container_name: willsmith
+    restart: unless-stopped
+    ports:
+      - 3000:3000

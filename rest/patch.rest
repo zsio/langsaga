@@ -1,0 +1,151 @@
+POST /runs/batch HTTP/1.1
+Host: localhost:3000
+User-Agent: langsmith-py/0.1.120
+Accept: application/json
+Connection: keep-alive
+x-api-key: ls__1560a0b445f74038848a5d32fc89f4eb
+Content-Type: application/json
+Content-Length: 5855
+
+{
+    "patch": [
+        {
+            "id": "46a9ea42-2f8f-4338-a1ff-56ea7cb214af",
+            "name": "ChatOpenAI",
+            "trace_id": "46a9ea42-2f8f-4338-a1ff-56ea7cb214af",
+            "parent_run_id": null,
+            "dotted_order": "20241029T021617417591Z46a9ea42-2f8f-4338-a1ff-56ea7cb214af",
+            "tags": [],
+            "extra": {
+                "invocation_params": {
+                    "model": "gpt-4o",
+                    "model_name": "gpt-4o",
+                    "stream": false,
+                    "n": 1,
+                    "temperature": 0.0,
+                    "max_tokens": 4096,
+                    "_type": "openai-chat",
+                    "stop": null
+                },
+                "options": {
+                    "stop": null
+                },
+                "batch_size": 1,
+                "metadata": {
+                    "ls_provider": "openai",
+                    "ls_model_name": "gpt-4o",
+                    "ls_model_type": "chat",
+                    "ls_temperature": 0.0,
+                    "ls_max_tokens": 4096,
+                    "revision_id": "refs/tags/v0.2.6-535-g496123b-dirty"
+                },
+                "runtime": {
+                    "sdk": "langsmith-py",
+                    "sdk_version": "0.1.120",
+                    "library": "langsmith",
+                    "platform": "macOS-15.0.1-arm64-arm-64bit",
+                    "runtime": "python",
+                    "py_implementation": "CPython",
+                    "runtime_version": "3.11.7",
+                    "langchain_version": "0.2.16",
+                    "langchain_core_version": "0.2.39"
+                }
+            },
+            "end_time": "2024-10-29T02:16:38.835141+00:00",
+            "inputs": {
+                "messages": [
+                    [
+                        {
+                            "lc": 1,
+                            "type": "constructor",
+                            "id": [
+                                "langchain",
+                                "schema",
+                                "messages",
+                                "HumanMessage"
+                            ],
+                            "kwargs": {
+                                "content": "hi",
+                                "type": "human"
+                            }
+                        }
+                    ]
+                ]
+            },
+            "outputs": {
+                "generations": [
+                    [
+                        {
+                            "text": "Hello! How can I assist you today?",
+                            "generation_info": {
+                                "finish_reason": "stop",
+                                "logprobs": null
+                            },
+                            "type": "ChatGeneration",
+                            "message": {
+                                "lc": 1,
+                                "type": "constructor",
+                                "id": [
+                                    "langchain",
+                                    "schema",
+                                    "messages",
+                                    "AIMessage"
+                                ],
+                                "kwargs": {
+                                    "content": "Hello! How can I assist you today?",
+                                    "additional_kwargs": {
+                                        "refusal": null
+                                    },
+                                    "response_metadata": {
+                                        "token_usage": {
+                                            "completion_tokens": 9,
+                                            "prompt_tokens": 8,
+                                            "total_tokens": 17,
+                                            "completion_tokens_details": null,
+                                            "prompt_tokens_details": null
+                                        },
+                                        "model_name": "gpt-4o-2024-08-06",
+                                        "system_fingerprint": "fp_d54531d9eb",
+                                        "finish_reason": "stop",
+                                        "logprobs": null
+                                    },
+                                    "type": "ai",
+                                    "id": "run-46a9ea42-2f8f-4338-a1ff-56ea7cb214af-0",
+                                    "usage_metadata": {
+                                        "input_tokens": 8,
+                                        "output_tokens": 9,
+                                        "total_tokens": 17
+                                    },
+                                    "tool_calls": [],
+                                    "invalid_tool_calls": []
+                                }
+                            }
+                        }
+                    ]
+                ],
+                "llm_output": {
+                    "token_usage": {
+                        "completion_tokens": 9,
+                        "prompt_tokens": 8,
+                        "total_tokens": 17,
+                        "completion_tokens_details": null,
+                        "prompt_tokens_details": null
+                    },
+                    "model_name": "gpt-4o-2024-08-06",
+                    "system_fingerprint": "fp_d54531d9eb"
+                },
+                "run": null
+            },
+            "events": [
+                {
+                    "name": "start",
+                    "time": "2024-10-29T02:16:17.417591+00:00"
+                },
+                {
+                    "name": "end",
+                    "time": "2024-10-29T02:16:38.835141+00:00"
+                }
+            ]
+        }
+    ]
+}
