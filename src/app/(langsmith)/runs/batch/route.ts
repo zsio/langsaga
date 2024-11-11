@@ -1,5 +1,4 @@
 import { headers } from "next/headers";
-import { IRun } from "@/types/runs";
 
 import { BulkJobOptions, Queue, tryCatch } from "bullmq";
 
@@ -36,7 +35,7 @@ export async function POST(request: Request) {
 
 
     if (postList.length) {
-      const posts: Job[] = postList.map((doc: IRun) => {
+      const posts: Job[] = postList.map((doc: any) => {
         const item = {
           name: doc.name,
           data: {
@@ -54,7 +53,7 @@ export async function POST(request: Request) {
     }
 
     if (patchList.length) {
-      const patches: Job[] = patchList.map((doc: IRun) => {
+      const patches: Job[] = patchList.map((doc: any) => {
         const item = {
           name: doc.name,
           data: {
