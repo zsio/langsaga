@@ -2,12 +2,15 @@ import { v4 as uuidv4 } from "uuid";
 import { QueueEvents, Worker, Queue } from "bullmq";
 import _ from "lodash";
 import { type IRunInsert, runsTable, apiKeysTable } from "@/lib/pg/schema";
-// import * as schema from '@/lib/pg/schema';
 import { pg } from "@/lib/pg";
 import dayjs from "dayjs";
 import { eq, or } from "drizzle-orm";
 
-const defaultApiKey = "cf4ac184-44c8-438e-93d8-9b61f147eb55";
+const defaultApiKey = process.env.DEFAULT_API_KEY;
+
+if (!defaultApiKey) {
+  throw new Error("未设置默认 API Key");
+}
 
 interface IRunTask
   extends Omit<
