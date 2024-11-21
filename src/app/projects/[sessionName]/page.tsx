@@ -15,10 +15,7 @@ import {
   OnChangeFn,
   Row,
 } from "@tanstack/react-table";
-import {
-  LayoutDashboard,
-  RefreshCcw,
-} from "lucide-react";
+import { LayoutDashboard, RefreshCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useParams } from "next/navigation";
@@ -29,7 +26,6 @@ import {
   QueryClientProvider,
   useInfiniteQuery,
 } from "@tanstack/react-query";
-
 
 import { columns } from "./columns";
 import { DataTable } from "./data-table";
@@ -84,7 +80,7 @@ export default function Page() {
         </div>
       </div>
       <div className="flex-1 overflow-auto h-full border-t" onScroll={() => {}}>
-        <DataTable columns={columns} data={data?.pages?.[0]?.data || []} />
+        <DataTable columns={columns} data={data?.pages?.[0]?.data?.list || []} />
       </div>
     </div>
   );

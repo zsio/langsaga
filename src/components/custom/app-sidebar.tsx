@@ -10,6 +10,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
 
@@ -26,7 +27,7 @@ const items = [
 export function AppSidebar() {
   return (
     <Sidebar variant="sidebar" collapsible="icon">
-      <SidebarHeader>Log</SidebarHeader>
+      <SidebarHeader><SidebarTrigger className="size-8" /></SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           <SidebarMenu>

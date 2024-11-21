@@ -36,7 +36,6 @@ export default async function ProjectsLayout({
       <AppSidebar />
       <main className="w-full h-screen overflow-auto flex flex-col">
         <div className="flex-0 flex items-center border-b h-12 px-3 gap-4 w-full bg-white">
-          <SidebarTrigger />
           <BreadcrumbComponent />
         </div>
         <div className="h-12 grow">
