@@ -34,12 +34,12 @@ export default async function ProjectsLayout({
       } as React.CSSProperties}
     >
       <AppSidebar />
-      <main className="w-full">
-        <div className="flex items-center border-b h-12 px-3 gap-4 ">
+      <main className="w-full h-screen overflow-auto flex flex-col">
+        <div className="flex-0 flex items-center border-b h-12 px-3 gap-4 w-full bg-white">
           <SidebarTrigger />
           <BreadcrumbComponent />
         </div>
-        <div className="min-h-12">
+        <div className="h-12 grow">
           {children}
         </div>
       </main>

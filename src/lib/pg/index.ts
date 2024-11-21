@@ -9,4 +9,5 @@ const pg = drizzle(process.env.DATABASE_URL!, {
 });
 
 
-export { pg };
+const db = pg;
+export { pg, db };

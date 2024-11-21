@@ -64,8 +64,8 @@ export const runsTable = pgTable("runs", {
   parent_run_id: varchar(),
   trace_id: varchar(),
   dotted_order: varchar(),
-  inputs: jsonb(),
-  outputs: jsonb(),
+  inputs: jsonb().$type<Record<string, any>>(),
+  outputs: jsonb().$type<Record<string, any>>(),
   session_name: varchar(),
   // 服务端
   api_key: uuid().references(()=>apiKeysTable.key).notNull(),
