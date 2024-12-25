@@ -83,7 +83,6 @@ const runSaveWorker = new Worker<IRunTask>(
         .insert(runsTable)
         .values(insetData)
         .returning();
-      console.log("[post] - [插入成功] - ", insertRun?.[0]?.run_id);
     }
 
     if (data.type === "patch") {
@@ -126,8 +125,6 @@ const runSaveWorker = new Worker<IRunTask>(
         .set(updateData)
         .where(eq(runsTable.run_id, data.id))
         .returning();
-
-      console.log("[patch] - [更新成功] - ", updateRun?.[0]?.run_id);
     }
   },
   {
@@ -138,7 +135,6 @@ const runSaveWorker = new Worker<IRunTask>(
 
 runSaveWorker.on("completed", async (job) => {
   await job.remove();
-  console.log(`Job ${job.id} has completed`);
 });
 
 runSaveWorker.on("failed", async (job, err) => {
@@ -149,13 +145,7 @@ runSaveWorker.on("failed", async (job, err) => {
   }
 });
 
-// runSaveWorker.on("drained", async () => {
-//   await runsQueue.clean(1000 * 60 * 60 * 1, 100, "completed");
-//   await runsQueue.clean(1000 * 60 * 60 * 24 * 31, 1000, "failed");
-// });
-
 setInterval(async () => {
-  console.log(`[${dayjs().format("YYYY-MM-DD HH:mm:ss")}] - Running...`);
   await runsQueue.clean(1000 * 60 * 60 * 1, 100, "completed");
   await runsQueue.clean(1000 * 60 * 60 * 24 * 31, 1000, "failed");
 }, 5000);
