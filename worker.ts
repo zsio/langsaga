@@ -129,7 +129,11 @@ const runSaveWorker = new Worker<IRunTask>(
   },
   {
     connection: bullMQConnection,
-    concurrency: 1,
+    concurrency: 5,
+    limiter: {
+      max: 100,
+      duration: 1000
+    }
   }
 );
 
@@ -140,12 +144,45 @@ runSaveWorker.on("completed", async (job) => {
 runSaveWorker.on("failed", async (job, err) => {
   console.error(`任务 ${job?.id || "未知ID"} 处理异常: ${err.message}`);
   if ((job?.attemptsMade || 0) >= 5) {
-    console.error(`任务 ${job?.id || "未知ID"} 重试次数已达上限`);
+    console.error(`任务 ${job?.id || "未知ID"} 重试次数已达上限,准备删除任务数据`);
     await job?.remove();
   }
 });
 
+const queueEvents = new QueueEvents('runs_queue', {
+  connection: bullMQConnection
+});
+
+queueEvents.on('waiting', ({ jobId }) => {
+  console.log(`任务 ${jobId} 正在等待处理`);
+});
+
+queueEvents.on('active', ({ jobId, prev }) => {
+  console.log(`任务 ${jobId} 开始处理`);
+});
+
+queueEvents.on('stalled', ({ jobId }) => {
+  console.error(`任务 ${jobId} 已停滞，可能需要检查`);
+});
+
 setInterval(async () => {
-  await runsQueue.clean(1000 * 60 * 60 * 1, 100, "completed");
-  await runsQueue.clean(1000 * 60 * 60 * 24 * 31, 1000, "failed");
-}, 5000);
+  try {
+    // 清理30分钟前的已完成任务
+    const completed = await runsQueue.clean(1000 * 60 * 5, 1000, "completed");
+    console.log(`清理${completed.length}个 5分钟前完成的任务`);
+    // 清理24小时前的失败任务
+    const failed = await runsQueue.clean(1000 * 60 * 60 * 24, 1000, "failed");
+    console.log(`清理${failed.length}个 24小时前的失败任务`);
+    // 获取队列状态
+    const jobCounts = await runsQueue.getJobCounts(
+      'waiting',
+      'active',
+      'completed',
+      'failed',
+      'delayed'
+    );
+    console.log('队列状态:', jobCounts);
+  } catch (error) {
+    console.error('清理队列时发生错误:', error);
+  }
+}, 60 * 1000);
