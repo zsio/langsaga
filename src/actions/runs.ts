@@ -33,6 +33,7 @@ export async function getRunsBySessionNameAction(
   const { api_key, user_id, ...rest } = getTableColumns(runsTable);
 
   const filters: SQL[] = [];
+  filters.push(gt(runsTable.start_time, sql`NOW() - INTERVAL '1 month'`));
   if (session_name) filters.push(eq(runsTable.session_name, session_name));
   if (startId) {
     if (isGetNewest) {
