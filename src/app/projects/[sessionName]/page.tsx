@@ -23,6 +23,7 @@ import {
   JsonViewDialogWrapper,
 } from "@/components/custom/JsonViewDialog";
 import { RunDetailSheet } from "@/app/projects/[sessionName]/RunDetailSheet";
+import { Console } from "node:console";
 
 const ReactJsonView = dynamic(() => import("react-json-view"), { ssr: false });
 
@@ -58,6 +59,7 @@ export default function Page() {
   const getRuns = useCallback(
     async (lastId?: number, isGetNewest = false) => {
       setIsFetching(true);
+      console.info("开始拉取列表数据")
       try {
         const res = await getRunsBySessionNameAction(
           params.sessionName as string,
@@ -78,6 +80,7 @@ export default function Page() {
         });
         setRunsTotal(res.meta.totalRowCount);
       } finally {
+        console.info("开始拉取列表数据")
         setIsFetching(false);
       }
     },

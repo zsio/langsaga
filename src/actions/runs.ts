@@ -33,7 +33,7 @@ export async function getRunsBySessionNameAction(
   const { api_key, user_id, ...rest } = getTableColumns(runsTable);
 
   const filters: SQL[] = [];
-  filters.push(gt(runsTable.start_time, sql`NOW() - INTERVAL '1 month'`));
+  filters.push(gt(runsTable.start_time, sql`NOW() - INTERVAL '1 week'`));
   if (session_name) filters.push(eq(runsTable.session_name, session_name));
   if (startId) {
     if (isGetNewest) {
@@ -68,8 +68,6 @@ export async function getRunsBySessionNameAction(
 
 export async function getRunsByRootId(traceId: string) {
   const { api_key, user_id, ...rest } = getTableColumns(runsTable);
-
-  
 
   const list = (await db
     .select({

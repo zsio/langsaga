@@ -5,10 +5,15 @@ import { type IRunInsert, runsTable, apiKeysTable } from "@/lib/pg/schema";
 import { pg } from "@/lib/pg";
 import dayjs from "dayjs";
 import { eq, or } from "drizzle-orm";
+import logger from "@/lib/logger";
+
+const log = logger;
+log.info("worker start");
 
 const defaultApiKey = process.env.DEFAULT_API_KEY;
 
 if (!defaultApiKey) {
+  log.fatal("未设置默认 API Key");
   throw new Error("未设置默认 API Key");
 }
 
@@ -131,9 +136,9 @@ const runSaveWorker = new Worker<IRunTask>(
     connection: bullMQConnection,
     concurrency: 5,
     limiter: {
-      max: 100,
-      duration: 1000
-    }
+      max: 1000,
+      duration: 500,
+    },
   }
 );
 
@@ -142,47 +147,49 @@ runSaveWorker.on("completed", async (job) => {
 });
 
 runSaveWorker.on("failed", async (job, err) => {
-  console.error(`任务 ${job?.id || "未知ID"} 处理异常: ${err.message}`);
+  log.error(`任务 ${job?.id || "未知ID"} 处理异常: ${err.message}`);
   if ((job?.attemptsMade || 0) >= 5) {
-    console.error(`任务 ${job?.id || "未知ID"} 重试次数已达上限,准备删除任务数据`);
+    log.error(`任务 ${job?.id || "未知ID"} 重试次数已达上限,准备删除任务数据`);
     await job?.remove();
   }
 });
 
-const queueEvents = new QueueEvents('runs_queue', {
-  connection: bullMQConnection
+const queueEvents = new QueueEvents("runs_queue", {
+  connection: bullMQConnection,
 });
 
-queueEvents.on('waiting', ({ jobId }) => {
-  console.log(`任务 ${jobId} 正在等待处理`);
+queueEvents.on("waiting", ({ jobId }) => {
+  log.info(`任务 ${jobId} 正在等待处理`);
 });
 
-queueEvents.on('active', ({ jobId, prev }) => {
-  console.log(`任务 ${jobId} 开始处理`);
+queueEvents.on("active", ({ jobId, prev }) => {
+  log.info(`任务 ${jobId} 开始处理`);
 });
 
-queueEvents.on('stalled', ({ jobId }) => {
-  console.error(`任务 ${jobId} 已停滞，可能需要检查`);
+queueEvents.on("stalled", ({ jobId }) => {
+  log.error(`任务 ${jobId} 已停滞，可能需要检查`);
 });
 
 setInterval(async () => {
   try {
     // 清理30分钟前的已完成任务
     const completed = await runsQueue.clean(1000 * 60 * 5, 1000, "completed");
-    console.log(`清理${completed.length}个 5分钟前完成的任务`);
+    log.info(`清理${completed.length}个 5分钟前完成的任务`);
     // 清理24小时前的失败任务
     const failed = await runsQueue.clean(1000 * 60 * 60 * 24, 1000, "failed");
-    console.log(`清理${failed.length}个 24小时前的失败任务`);
+    log.info(`清理${failed.length}个 24小时前的失败任务`);
     // 获取队列状态
     const jobCounts = await runsQueue.getJobCounts(
-      'waiting',
-      'active',
-      'completed',
-      'failed',
-      'delayed'
+      "waiting",
+      "active",
+      "completed",
+      "failed",
+      "delayed"
     );
-    console.log('队列状态:', jobCounts);
+    log.info(
+      `队列状态, 等待中: ${jobCounts.waiting}, 处理中: ${jobCounts.active}, 已完成: ${jobCounts.completed}, 失败: ${jobCounts.failed}, 延迟: ${jobCounts.delayed}`
+    );
   } catch (error) {
-    console.error('清理队列时发生错误:', error);
+    log.error("清理队列时发生错误:", error);
   }
 }, 60 * 1000);
