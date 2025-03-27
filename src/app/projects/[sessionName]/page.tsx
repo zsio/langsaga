@@ -6,12 +6,17 @@ import { useAsyncEffect, useRafInterval, useSet, useMap, useScroll } from "ahook
 import {
   CircleCheck,
   CircleX,
-  LayoutDashboard,
-  RefreshCcw,
+  RefreshCcw
 } from "lucide-react";
 
 import { useParams } from "next/navigation";
 import { getRunsBySessionNameAction, RunType } from "@/actions/runs";
+
+// 导入头部组件
+import { ProjectHeader, type FilterState } from "./ProjectHeader";
+
+// UI 组件
+import { Button } from "@/components/ui/button";
 
 import dayjs from "dayjs";
 import { format } from "timeago.js";
@@ -49,6 +54,16 @@ export default function Page() {
   const [runs, setRuns] = useState<RunType[]>([]);
   const [runsTotal, setRunsTotal] = useState(0);
 
+  // 过滤条件状态
+  const [filterState, setFilterState] = useState<FilterState>({
+    selectedDate: undefined,
+    inputsFilter: "",
+    outputsFilter: "",
+    statusFilter: "all",
+    sessionNameFilter: "",
+    refreshInterval: 3000 // 默认刷新间隔
+  });
+
   const [runDetailTraceId, setRunDetailTraceId] = useState<string>();
   const [detailOpen, setDetailOpen] = useState(false);
 
@@ -60,12 +75,25 @@ export default function Page() {
       setError(null);
       console.info("开始拉取列表数据", { lastId, isGetNewest });
       try {
-        const res = await getRunsBySessionNameAction(
-          params.sessionName as string,
-          lastId,
+        const { selectedDate, inputsFilter, outputsFilter, statusFilter, sessionNameFilter } = filterState;
+        
+        // 准备过滤参数
+        const filterParams = {
+          sessionName: params.sessionName as string,
+          startId: lastId,
           isGetNewest,
-          30
-        );
+          limit: 30,
+          // 日期过滤 - 现在只使用单个时间点
+          // 添加时区偏移信息，确保时间正确
+          startDate: selectedDate ? dayjs(selectedDate).format('YYYY-MM-DD HH:mm:ss Z') : undefined,
+          // 其他过滤条件
+          inputsFilter: inputsFilter || undefined,
+          outputsFilter: outputsFilter || undefined,
+          statusFilter: statusFilter === 'all' ? undefined : statusFilter,
+          sessionNameFilter: sessionNameFilter || undefined
+        };
+        
+        const res = await getRunsBySessionNameAction(filterParams);
         const list = res.data.list;
         
         // 如果获取的数据为空且不是获取最新数据，说明没有更多数据了
@@ -74,18 +102,26 @@ export default function Page() {
           return;
         }
         
-        setRuns((prev) => {
-          const runMap = new Map();
-          prev.forEach((run) => {
-            runMap.set(run.id, run);
+        // 如果是过滤后的新查询或者初始加载，直接替换数据
+        if (runs.length === 0 || (isGetNewest === false && lastId === undefined)) {
+          const newRuns = _.sortBy(list, (run) => -run.id);
+          console.info("替换列表数据", newRuns);
+          setRuns(newRuns);
+        } else {
+          // 否则合并数据
+          setRuns((prev) => {
+            const runMap = new Map();
+            prev.forEach((run) => {
+              runMap.set(run.id, run);
+            });
+            list.forEach((run) => {
+              runMap.set(run.id, run);
+            });
+            const newRuns = _.sortBy(Array.from(runMap.values()), (run) => -run.id);
+            console.info("合并列表数据", newRuns);
+            return newRuns;
           });
-          list.forEach((run) => {
-            runMap.set(run.id, run);
-          });
-          const newRuns = _.sortBy(Array.from(runMap.values()), (run) => -run.id);
-          console.info("拉取列表数据", newRuns);
-          return newRuns;
-        });
+        }
         setRunsTotal(res.meta.totalRowCount);
       } catch (err) {
         console.error("获取数据失败", err);
@@ -95,15 +131,52 @@ export default function Page() {
         setIsFetching(false);
       }
     },
-    [params.sessionName, isFetching, runs.length]
+    [params.sessionName, isFetching, runs.length, filterState]
   );
 
   // 刷新数据
   const refreshData = useCallback(async () => {
     setHasMoreData(true); // 重置加载状态
-    const firstId = runs.length > 0 ? runs[0].id : undefined;
-    await getRuns(firstId, true);
-  }, [getRuns, runs]);
+    
+    // 如果有过滤条件，清空当前数据并从头开始获取
+    const hasFilters = !!filterState.selectedDate || 
+                     !!filterState.inputsFilter || 
+                     !!filterState.outputsFilter || 
+                     filterState.statusFilter !== "all" || 
+                     !!filterState.sessionNameFilter;
+    
+    if (hasFilters) {
+      setRuns([]);
+      await getRuns(undefined, false);
+    } else {
+      // 没有过滤条件时，获取最新数据
+      const firstId = runs.length > 0 ? runs[0].id : undefined;
+      await getRuns(firstId, true);
+    }
+  }, [getRuns, runs, filterState]);
+  
+  // 处理过滤条件变化
+  const handleFilterChange = useCallback((newState: Partial<FilterState>) => {
+    setFilterState(prev => ({ ...prev, ...newState }));
+    
+    // 只有当刷新间隔变化时才自动触发刷新
+    // 其他过滤条件变化需要用户点击搜索按钮才会触发
+    if ('refreshInterval' in newState && newState.refreshInterval !== undefined) {
+      // 刷新间隔变化不需要清空数据
+    }
+  }, []);
+  
+  // 准备搜索（当点击搜索按钮时调用）
+  const prepareSearch = useCallback(() => {
+    // 清空当前数据
+    setRuns([]);
+    // 重置加载状态
+    setHasMoreData(true);
+    // 重置错误状态
+    setError(null);
+    // 触发数据获取
+    getRuns();
+  }, [getRuns]);
 
   // 滚动加载
   const loadMore = useCallback(async () => {
@@ -136,10 +209,22 @@ export default function Page() {
     }
   }, [params.sessionName, tableContainerScrollPositon, hasMoreData]);
 
-  // 定时自动刷新 (每60秒刷新一次)
+  // 计算是否有过滤条件
+  const hasFilters = useMemo(() => {
+    return !!filterState.selectedDate || 
+           !!filterState.inputsFilter || 
+           !!filterState.outputsFilter || 
+           filterState.statusFilter !== "all" || 
+           !!filterState.sessionNameFilter;
+  }, [filterState]);
+
+  // 定时自动刷新
   useRafInterval(() => {
-    refreshData();
-  }, 3000);
+    // 只有当没有过滤条件时才进行自动刷新
+    if (filterState.refreshInterval > 0 && !hasFilters) {
+      refreshData();
+    }
+  }, filterState.refreshInterval || 999999); // 如果设置为0，使用一个很大的值来模拟“关闭”
 
   const isPending = useMemo(
     () => runs.length === 0 && isFetching,
@@ -154,23 +239,15 @@ export default function Page() {
 
   return (
     <div className=" h-full flex flex-col">
-      <div className="p-4 pl-6 bg-gradient-to-r from-gray-50 to-white">
-        <div className="text-2xl font-bold flex items-center gap-2 text-gray-800">
-          <LayoutDashboard className="text-indigo-500" />
-          <span>Runs</span>
-          <button 
-            onClick={refreshData} 
-            disabled={isFetching}
-            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <RefreshCcw size={14} className={isFetching ? "animate-spin" : ""} />
-            <span>刷新</span>
-          </button>
-        </div>
-        <div className="text-sm text-gray-500 mt-1">
-          Recent runs from your project.
-        </div>
-      </div>
+      <ProjectHeader 
+        sessionName={params.sessionName as string}
+        totalCount={runsTotal}
+        filterState={filterState}
+        onFilterChange={handleFilterChange}
+        onRefresh={prepareSearch}
+        isFetching={isFetching}
+        hasFilters={hasFilters}
+      />
       <div className="flex-1 overflow-auto h-full border-t border-gray-100">
         {isPending ? (
           <div className="flex justify-center items-center h-full">
@@ -220,11 +297,6 @@ export default function Page() {
                             <div className="max-w-full overflow-hidden text-ellipsis whitespace-nowrap font-medium text-gray-800 hover:text-indigo-600 cursor-pointer transition-colors">
                               <span className="overflow-hidden text-ellipsis">{row.name}</span>
                             </div>
-                            <span className="absolute -right-1 top-0 text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="9 18 15 12 9 6"></polyline>
-                              </svg>
-                            </span>
                           </div>
                         </div>
                         <div className="mt-1.5 flex items-center gap-2">

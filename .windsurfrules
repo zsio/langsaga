@@ -1,2 +1,3 @@
 本项目使用 nextjs15 和 tailwind v4。
 以及 tailwindcss-animate、shadcn-ui。
+使用 pnpm 管理依赖包
