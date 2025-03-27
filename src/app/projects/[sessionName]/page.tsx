@@ -23,9 +23,6 @@ import {
   JsonViewDialogWrapper,
 } from "@/components/custom/JsonViewDialog";
 import { RunDetailSheet } from "@/app/projects/[sessionName]/RunDetailSheet";
-import { Console } from "node:console";
-
-const ReactJsonView = dynamic(() => import("react-json-view"), { ssr: false });
 
 function getSingleStringProperty(obj?: Record<string, any>) {
   if (!obj) {
@@ -47,7 +44,7 @@ function getSingleStringProperty(obj?: Record<string, any>) {
 export default function Page() {
   const params = useParams();
   const [isFetching, setIsFetching] = useState(true);
-  const tableContainerScrollRef = useRef<HTMLElement>(null);
+  const tableContainerScrollRef = useRef<HTMLDivElement>(null);
   const tableContainerScrollPositon = useScroll(tableContainerScrollRef);
 
   const [runs, setRuns] = useState<RunType[]>([]);
@@ -132,60 +129,91 @@ export default function Page() {
 
   return (
     <div className=" h-full flex flex-col">
-      <div className="p-2 pl-4">
-        <div className="text-2xl font-bold flex items-center gap-2">
-          <LayoutDashboard className="" />
+      <div className="p-4 pl-6 bg-gradient-to-r from-gray-50 to-white">
+        <div className="text-2xl font-bold flex items-center gap-2 text-gray-800">
+          <LayoutDashboard className="text-indigo-500" />
           <span>Runs</span>
         </div>
-        <div className="text-sm text-muted-foreground">
+        <div className="text-sm text-gray-500 mt-1">
           Recent runs from your project.
         </div>
       </div>
-      <div className="flex-1 overflow-auto h-full border-t">
+      <div className="flex-1 overflow-auto h-full border-t border-gray-100">
         {isPending ? (
           <div className="flex justify-center items-center h-full">
-            <RefreshCcw size={24} className="animate-spin" />
+            <div className="flex flex-col items-center gap-3">
+              <RefreshCcw size={24} className="animate-spin text-indigo-500" />
+              <span className="text-sm text-gray-500">加载数据中...</span>
+            </div>
           </div>
         ) : (
-          <div ref={tableContainerScrollRef} className="w-full h-full overflow-auto">
-            <table className="w-full [&_tr]:border-b text-gray-600">
-              <thead>
-                <tr className="border-b h-10 bg-gray-50">
-                  <th></th>
-                  <th className="text-left">Name</th>
-                  <th className="text-left">Inputs</th>
-                  <th className="text-left">Outputs</th>
-                  <th className="text-right">Time</th>
+          <div ref={tableContainerScrollRef} className="w-full h-full overflow-auto bg-white">
+            <table className="w-full border-collapse text-gray-700">
+              <thead className="sticky top-0 z-10">
+                <tr className="border-b h-12 bg-gray-50">
+                  <th className="text-left px-4 font-medium text-gray-600">Name</th>
+                  <th className="text-left px-4 font-medium text-gray-600">Time</th>
+                  <th className="text-left px-4 font-medium text-gray-600">Inputs</th>
+                  <th className="text-left px-4 font-medium text-gray-600">Outputs</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-gray-50">
                 {runs.map((row) => (
-                  <tr key={row.id}>
-                    <td className="w-14 min-w-14">
-                      <div className="flex justify-center items-center">
-                        {row.error ? (
-                          <CircleX color="#ff0000" size={24} />
-                        ) : (
-                          <CircleCheck color="#199400" size={24} />
-                        )}
+                  <tr 
+                    key={row.id} 
+                    className="hover:bg-gray-50/50 transition-all duration-150 ease-in-out"
+                  >
+                    <td className="w-[320px] min-w-[200px] max-w-[350px] py-3 px-4">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          
+                          <div 
+                            onClick={() => handleClickRowName(row.trace_id)}
+                            className="relative group flex-1 min-w-0"
+                          >
+                            <div className="max-w-full overflow-hidden text-ellipsis whitespace-nowrap font-medium text-gray-800 hover:text-indigo-600 cursor-pointer transition-colors">
+                              <span className="overflow-hidden text-ellipsis">{row.name}</span>
+                            </div>
+                            <span className="absolute -right-1 top-0 text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                              </svg>
+                            </span>
+                          </div>
+                        </div>
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <div className="flex-shrink-0">
+                            {row.error ? (
+                              <div className="w-6 h-6 rounded-full bg-red-50 flex items-center justify-center">
+                                <CircleX color="#f43f5e" size={16} />
+                              </div>
+                            ) : (
+                              <div className="w-6 h-6 rounded-full bg-green-50 flex items-center justify-center">
+                                <CircleCheck color="#10b981" size={16} />
+                              </div>
+                            )}
+                          </div>
+                          <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600">
+                            {row.run_type}
+                          </span>
+                          
+                        </div>
                       </div>
                     </td>
-                    <td className="w-[300px] min-w-[160px] max-w-[320px]">
-                      <div
-                        className="truncate hover:underline cursor-pointer"
-                        onClick={() => handleClickRowName(row.trace_id)}
-                      >
-                        {row.name}
-                      </div>
-                      <div className="text-muted-foreground text-sm pt-0.5">
-                        <Badge variant="outline" className="font-normal">
-                          {row.run_type}
-                        </Badge>
+                    <td className="w-36 min-w-36 py-3 px-4">
+                      <div className="flex flex-col">
+                        <div className="text-sm font-medium text-gray-800">
+                          {dayjs(row.start_time).format("MM-DD")}
+                          <span className="text-gray-500 ml-2 font-normal">{dayjs(row.start_time).format("HH:mm")}</span>
+                        </div>
+                        <div className="text-xs text-gray-400 mt-0.5">
+                          {format(row.start_time!)}
+                        </div>
                       </div>
                     </td>
-                    <td className="max-w-96">
+                    <td className="max-w-96 py-3 px-4">
                       <div
-                        className="w-full truncate hover:underline cursor-pointer text-sm"
+                        className="w-full truncate hover:text-indigo-600 cursor-pointer text-sm transition-colors"
                         onClick={() =>
                           jsonViewDialogRef.current?.openDialog(
                             row.inputs || {},
@@ -194,12 +222,14 @@ export default function Page() {
                           )
                         }
                       >
+                        <span className="text-gray-400 mr-1.5">{"{ "}</span>
                         {getSingleStringProperty(row?.inputs || {})}
+                        <span className="text-gray-400 ml-1.5">{" }"}</span>
                       </div>
                     </td>
-                    <td className="max-w-96">
+                    <td className="max-w-96 py-3 px-4">
                       <div
-                        className="w-full truncate hover:underline cursor-pointer text-sm"
+                        className="w-full truncate hover:text-indigo-600 cursor-pointer text-sm transition-colors"
                         onClick={() =>
                           jsonViewDialogRef.current?.openDialog(
                             row.outputs || {},
@@ -208,17 +238,9 @@ export default function Page() {
                           )
                         }
                       >
+                        <span className="text-gray-400 mr-1.5">{"{ "}</span>
                         {getSingleStringProperty(row?.outputs || {})}
-                      </div>
-                    </td>
-                    <td className="w-36 min-w-40">
-                      <div className="text-right pr-3">
-                        <div className="text-sm">
-                          {dayjs(row.start_time).format("YYYY-MM-DD HH:mm:ss")}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {format(row.start_time!)}
-                        </div>
+                        <span className="text-gray-400 ml-1.5">{" }"}</span>
                       </div>
                     </td>
                   </tr>
@@ -227,9 +249,12 @@ export default function Page() {
               <tfoot>
                 {isFetching && (
                   <tr>
-                    <td colSpan={5}>
-                      <div className="bg-white h-8 border-t text-center">
-                        Fetching ...
+                    <td colSpan={4}>
+                      <div className="bg-white h-12 border-t border-gray-100 text-center py-3 text-gray-500">
+                        <div className="flex items-center justify-center gap-2">
+                          <RefreshCcw size={14} className="animate-spin text-indigo-500" />
+                          <span className="text-sm">加载中...</span>
+                        </div>
                       </div>
                     </td>
                   </tr>
