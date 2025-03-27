@@ -9,15 +9,12 @@ import {
   LayoutDashboard,
   RefreshCcw,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 
 import { useParams } from "next/navigation";
 import { getRunsBySessionNameAction, RunType } from "@/actions/runs";
-// 移除 TableVirtuoso 导入
 
 import dayjs from "dayjs";
 import { format } from "timeago.js";
-import dynamic from "next/dynamic";
 import {
   jsonViewDialogRef,
   JsonViewDialogWrapper,
@@ -44,6 +41,8 @@ function getSingleStringProperty(obj?: Record<string, any>) {
 export default function Page() {
   const params = useParams();
   const [isFetching, setIsFetching] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [hasMoreData, setHasMoreData] = useState(true);
   const tableContainerScrollRef = useRef<HTMLDivElement>(null);
   const tableContainerScrollPositon = useScroll(tableContainerScrollRef);
 
@@ -55,8 +54,11 @@ export default function Page() {
 
   const getRuns = useCallback(
     async (lastId?: number, isGetNewest = false) => {
+      // 如果已经在获取数据中且不是初始加载（runs.length > 0），则不重复获取
+      if (isFetching && runs.length > 0) return;
       setIsFetching(true);
-      console.info("开始拉取列表数据")
+      setError(null);
+      console.info("开始拉取列表数据", { lastId, isGetNewest });
       try {
         const res = await getRunsBySessionNameAction(
           params.sessionName as string,
@@ -65,6 +67,13 @@ export default function Page() {
           30
         );
         const list = res.data.list;
+        
+        // 如果获取的数据为空且不是获取最新数据，说明没有更多数据了
+        if (list.length === 0 && !isGetNewest) {
+          setHasMoreData(false);
+          return;
+        }
+        
         setRuns((prev) => {
           const runMap = new Map();
           prev.forEach((run) => {
@@ -78,31 +87,42 @@ export default function Page() {
           return newRuns;
         });
         setRunsTotal(res.meta.totalRowCount);
+      } catch (err) {
+        console.error("获取数据失败", err);
+        setError(err instanceof Error ? err.message : "获取数据失败，请重试");
       } finally {
         console.info("结束拉取列表数据")
         setIsFetching(false);
       }
     },
-    [params.sessionName]
+    [params.sessionName, isFetching, runs.length]
   );
 
+  // 刷新数据
+  const refreshData = useCallback(async () => {
+    setHasMoreData(true); // 重置加载状态
+    const firstId = runs.length > 0 ? runs[0].id : undefined;
+    await getRuns(firstId, true);
+  }, [getRuns, runs]);
+
   // 滚动加载
-  const loadMore = async () => {
-    if (isFetching) return;
+  const loadMore = useCallback(async () => {
+    if (isFetching || !hasMoreData) return;
     if (runs.length === 0) {
       return;
     }
     const lastId = runs[runs.length - 1].id;
     await getRuns(lastId);
-  };
+  }, [getRuns, runs, isFetching, hasMoreData]);
 
+  // 初始加载和滚动监听
   useAsyncEffect(async () => {
     if (runs.length === 0) {
       await getRuns();
       return;
     }
 
-    if (!tableContainerScrollPositon?.top) return;
+    if (!tableContainerScrollPositon?.top || !hasMoreData) return;
     const tableContainer = tableContainerScrollRef.current;
     if (!tableContainer) return;
     const scrollClientHeight = tableContainer.clientHeight;
@@ -114,7 +134,12 @@ export default function Page() {
     if (distanceFromBottom < 150) {
       await loadMore();
     }
-  }, [params.sessionName, tableContainerScrollPositon]);
+  }, [params.sessionName, tableContainerScrollPositon, hasMoreData]);
+
+  // 定时自动刷新 (每60秒刷新一次)
+  useRafInterval(() => {
+    refreshData();
+  }, 3000);
 
   const isPending = useMemo(
     () => runs.length === 0 && isFetching,
@@ -133,6 +158,14 @@ export default function Page() {
         <div className="text-2xl font-bold flex items-center gap-2 text-gray-800">
           <LayoutDashboard className="text-indigo-500" />
           <span>Runs</span>
+          <button 
+            onClick={refreshData} 
+            disabled={isFetching}
+            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCcw size={14} className={isFetching ? "animate-spin" : ""} />
+            <span>刷新</span>
+          </button>
         </div>
         <div className="text-sm text-gray-500 mt-1">
           Recent runs from your project.
@@ -144,6 +177,19 @@ export default function Page() {
             <div className="flex flex-col items-center gap-3">
               <RefreshCcw size={24} className="animate-spin text-indigo-500" />
               <span className="text-sm text-gray-500">加载数据中...</span>
+            </div>
+          </div>
+        ) : error ? (
+          <div className="flex justify-center items-center h-full">
+            <div className="flex flex-col items-center gap-3">
+              <CircleX size={24} className="text-red-500" />
+              <span className="text-sm text-gray-500">{error}</span>
+              <button 
+                onClick={() => getRuns()} 
+                className="mt-2 px-3 py-1.5 text-sm rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
+              >
+                重试
+              </button>
             </div>
           </div>
         ) : (
@@ -247,14 +293,23 @@ export default function Page() {
                 ))}
               </tbody>
               <tfoot>
-                {isFetching && (
+                {isFetching && runs.length > 0 && (
                   <tr>
                     <td colSpan={4}>
                       <div className="bg-white h-12 border-t border-gray-100 text-center py-3 text-gray-500">
                         <div className="flex items-center justify-center gap-2">
                           <RefreshCcw size={14} className="animate-spin text-indigo-500" />
-                          <span className="text-sm">加载中...</span>
+                          <span className="text-sm">加载更多...</span>
                         </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                {!hasMoreData && runs.length > 0 && (
+                  <tr>
+                    <td colSpan={4}>
+                      <div className="bg-white h-12 border-t border-gray-100 text-center py-3 text-gray-500">
+                        <span className="text-sm">没有更多数据了</span>
                       </div>
                     </td>
                   </tr>
