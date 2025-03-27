@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 
 import { useParams } from "next/navigation";
 import { getRunsBySessionNameAction, RunType } from "@/actions/runs";
-import { TableVirtuoso } from "react-virtuoso";
+// 移除 TableVirtuoso 导入
 
 import dayjs from "dayjs";
 import { format } from "timeago.js";
@@ -76,11 +76,13 @@ export default function Page() {
           list.forEach((run) => {
             runMap.set(run.id, run);
           });
-          return _.sortBy(Array.from(runMap.values()), (run) => -run.id);
+          const newRuns = _.sortBy(Array.from(runMap.values()), (run) => -run.id);
+          console.info("拉取列表数据", newRuns);
+          return newRuns;
         });
         setRunsTotal(res.meta.totalRowCount);
       } finally {
-        console.info("开始拉取列表数据")
+        console.info("结束拉取列表数据")
         setIsFetching(false);
       }
     },
@@ -145,109 +147,96 @@ export default function Page() {
             <RefreshCcw size={24} className="animate-spin" />
           </div>
         ) : (
-          <TableVirtuoso
-            className="w-full "
-            data={runs}
-            totalCount={runsTotal}
-            scrollerRef={(ref) => {
-              if (ref instanceof HTMLElement) {
-                tableContainerScrollRef.current = ref;
-              }
-            }}
-            components={{
-              Table: ({ style, ...props }) => (
-                <table
-                  {...props}
-                  className="w-full [&_tr]:border-b  text-gray-600"
-                  style={{ ...style }}
-                />
-              ),
-            }}
-            fixedHeaderContent={() => (
-              <tr className="border-b h-10 bg-gray-50">
-                <th></th>
-                <th className="text-left">Name</th>
-                <th className="text-left">Inputs</th>
-                <th className="text-left">Outputs</th>
-                <th className="text-right">Time</th>
-              </tr>
-            )}
-            itemContent={(index, row) => (
-              <>
-                <td className="w-14 min-w-14">
-                  <div className="flex justify-center items-center">
-                    {row.error ? (
-                      <CircleX color="#ff0000" size={24} />
-                    ) : (
-                      <CircleCheck color="#199400" size={24} />
-                    )}
-                  </div>
-                </td>
-                <td className=" w-[300px] min-w-[160px] max-w-[320px]">
-                  <div
-                    className="truncate hover:underline cursor-pointer"
-                    onClick={() => handleClickRowName(row.trace_id)}
-                  >
-                    {row.name}
-                  </div>
-                  <div className="text-muted-foreground text-sm pt-0.5">
-                    <Badge variant="outline" className="font-normal	">
-                      {row.run_type}
-                    </Badge>
-                  </div>
-                </td>
-                <td className="max-w-96">
-                  <div
-                    className="w-full truncate hover:underline cursor-pointer text-sm"
-                    onClick={() =>
-                      jsonViewDialogRef.current?.openDialog(
-                        row.inputs || {},
-                        "Inputs",
-                        row.name!
-                      )
-                    }
-                  >
-                    {getSingleStringProperty(row?.inputs || {})}
-                  </div>
-                </td>
-                <td className="max-w-96">
-                  <div
-                    className="w-full truncate hover:underline cursor-pointer text-sm"
-                    onClick={() =>
-                      jsonViewDialogRef.current?.openDialog(
-                        row.outputs || {},
-                        "Outputs",
-                        row.name!
-                      )
-                    }
-                  >
-                    {getSingleStringProperty(row?.outputs || {})}
-                  </div>
-                </td>
-                <td className="w-36 min-w-40">
-                  <div className="text-right pr-3">
-                    <div className="text-sm">
-                      {dayjs(row.start_time).format("YYYY-MM-DD HH:mm:ss")}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {format(row.start_time!)}
-                    </div>
-                  </div>
-                </td>
-              </>
-            )}
-            fixedFooterContent={() => (
-              <tr>
-                <td colSpan={5}>
-                  {isFetching && (
-                    <div className="bg-white h-8 border-t fixed bottom-0 right-0 text-center">
-                      Fetching ...
-                    </div>
-                  )}
-                </td>
-              </tr>
-            )}
-          />
+          <div ref={tableContainerScrollRef} className="w-full h-full overflow-auto">
+            <table className="w-full [&_tr]:border-b text-gray-600">
+              <thead>
+                <tr className="border-b h-10 bg-gray-50">
+                  <th></th>
+                  <th className="text-left">Name</th>
+                  <th className="text-left">Inputs</th>
+                  <th className="text-left">Outputs</th>
+                  <th className="text-right">Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {runs.map((row) => (
+                  <tr key={row.id}>
+                    <td className="w-14 min-w-14">
+                      <div className="flex justify-center items-center">
+                        {row.error ? (
+                          <CircleX color="#ff0000" size={24} />
+                        ) : (
+                          <CircleCheck color="#199400" size={24} />
+                        )}
+                      </div>
+                    </td>
+                    <td className="w-[300px] min-w-[160px] max-w-[320px]">
+                      <div
+                        className="truncate hover:underline cursor-pointer"
+                        onClick={() => handleClickRowName(row.trace_id)}
+                      >
+                        {row.name}
+                      </div>
+                      <div className="text-muted-foreground text-sm pt-0.5">
+                        <Badge variant="outline" className="font-normal">
+                          {row.run_type}
+                        </Badge>
+                      </div>
+                    </td>
+                    <td className="max-w-96">
+                      <div
+                        className="w-full truncate hover:underline cursor-pointer text-sm"
+                        onClick={() =>
+                          jsonViewDialogRef.current?.openDialog(
+                            row.inputs || {},
+                            "Inputs",
+                            row.name!
+                          )
+                        }
+                      >
+                        {getSingleStringProperty(row?.inputs || {})}
+                      </div>
+                    </td>
+                    <td className="max-w-96">
+                      <div
+                        className="w-full truncate hover:underline cursor-pointer text-sm"
+                        onClick={() =>
+                          jsonViewDialogRef.current?.openDialog(
+                            row.outputs || {},
+                            "Outputs",
+                            row.name!
+                          )
+                        }
+                      >
+                        {getSingleStringProperty(row?.outputs || {})}
+                      </div>
+                    </td>
+                    <td className="w-36 min-w-40">
+                      <div className="text-right pr-3">
+                        <div className="text-sm">
+                          {dayjs(row.start_time).format("YYYY-MM-DD HH:mm:ss")}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {format(row.start_time!)}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                {isFetching && (
+                  <tr>
+                    <td colSpan={5}>
+                      <div className="bg-white h-8 border-t text-center">
+                        Fetching ...
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tfoot>
+            </table>
+          </div>
         )}
       </div>
       <JsonViewDialogWrapper />
