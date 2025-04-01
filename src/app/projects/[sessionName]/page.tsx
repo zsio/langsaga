@@ -73,7 +73,6 @@ export default function Page() {
       if (isFetching && runs.length > 0) return;
       setIsFetching(true);
       setError(null);
-      console.info("开始拉取列表数据", { lastId, isGetNewest });
       try {
         const { selectedDate, inputsFilter, outputsFilter, statusFilter, sessionNameFilter } = filterState;
         
@@ -105,7 +104,6 @@ export default function Page() {
         // 如果是过滤后的新查询或者初始加载，直接替换数据
         if (runs.length === 0 || (isGetNewest === false && lastId === undefined)) {
           const newRuns = _.sortBy(list, (run) => -run.id);
-          console.info("替换列表数据", newRuns);
           setRuns(newRuns);
         } else {
           // 否则合并数据
@@ -118,7 +116,6 @@ export default function Page() {
               runMap.set(run.id, run);
             });
             const newRuns = _.sortBy(Array.from(runMap.values()), (run) => -run.id);
-            console.info("合并列表数据", newRuns);
             return newRuns;
           });
         }
@@ -127,29 +124,43 @@ export default function Page() {
         console.error("获取数据失败", err);
         setError(err instanceof Error ? err.message : "获取数据失败，请重试");
       } finally {
-        console.info("结束拉取列表数据")
         setIsFetching(false);
       }
     },
     [params.sessionName, isFetching, runs.length, filterState]
   );
 
+  // 上一次过滤条件的引用
+  const prevFilterStateRef = useRef<FilterState | null>(null);
+
   // 刷新数据
   const refreshData = useCallback(async () => {
     setHasMoreData(true); // 重置加载状态
     
-    // 如果有过滤条件，清空当前数据并从头开始获取
+    // 检查过滤条件是否有变化
     const hasFilters = !!filterState.selectedDate || 
                      !!filterState.inputsFilter || 
                      !!filterState.outputsFilter || 
                      filterState.statusFilter !== "all" || 
                      !!filterState.sessionNameFilter;
     
-    if (hasFilters) {
+    // 检查过滤条件是否发生变化
+    const filterChanged = !prevFilterStateRef.current || 
+                         prevFilterStateRef.current.selectedDate !== filterState.selectedDate ||
+                         prevFilterStateRef.current.inputsFilter !== filterState.inputsFilter ||
+                         prevFilterStateRef.current.outputsFilter !== filterState.outputsFilter ||
+                         prevFilterStateRef.current.statusFilter !== filterState.statusFilter ||
+                         prevFilterStateRef.current.sessionNameFilter !== filterState.sessionNameFilter;
+    
+    // 更新过滤条件引用
+    prevFilterStateRef.current = {...filterState};
+    
+    // 如果有过滤条件且过滤条件发生了变化，清空当前数据并从头开始获取
+    if (hasFilters && filterChanged) {
       setRuns([]);
       await getRuns(undefined, false);
     } else {
-      // 没有过滤条件时，获取最新数据
+      // 没有过滤条件或过滤条件没有变化，获取最新数据
       const firstId = runs.length > 0 ? runs[0].id : undefined;
       await getRuns(firstId, true);
     }
@@ -218,13 +229,18 @@ export default function Page() {
            !!filterState.sessionNameFilter;
   }, [filterState]);
 
+  const hasTimeFilter = useMemo(() => {
+    return !!filterState.selectedDate;
+  }, [filterState.selectedDate]);
+
   // 定时自动刷新
   useRafInterval(() => {
-    // 只有当没有过滤条件时才进行自动刷新
-    if (filterState.refreshInterval > 0 && !hasFilters) {
+    // 只有当没有时间过滤条件时才进行自动刷新
+    // 其他过滤条件（状态、输入输出等）不影响自动刷新
+    if (filterState.refreshInterval > 0 && !hasTimeFilter) {
       refreshData();
     }
-  }, filterState.refreshInterval || 999999); // 如果设置为0，使用一个很大的值来模拟“关闭”
+  }, filterState.refreshInterval || 999999); // 如果设置为0，使用一个很大的值来模拟"关闭"
 
   const isPending = useMemo(
     () => runs.length === 0 && isFetching,
@@ -247,6 +263,7 @@ export default function Page() {
         onRefresh={prepareSearch}
         isFetching={isFetching}
         hasFilters={hasFilters}
+        hasTimeFilter={hasTimeFilter}
       />
       <div className="flex-1 overflow-auto h-full border-t border-gray-100">
         {isPending ? (

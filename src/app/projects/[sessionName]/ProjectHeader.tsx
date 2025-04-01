@@ -39,6 +39,7 @@ type ProjectHeaderProps = {
   onRefresh: () => void;
   isFetching: boolean;
   hasFilters?: boolean;
+  hasTimeFilter?: boolean;
 };
 
 export function ProjectHeader({
@@ -47,7 +48,9 @@ export function ProjectHeader({
   filterState,
   onFilterChange,
   onRefresh,
-  isFetching
+  isFetching,
+  hasFilters,
+  hasTimeFilter
 }: ProjectHeaderProps) {
   const {
     selectedDate,
@@ -344,7 +347,7 @@ export function ProjectHeader({
         {/* 搜索按钮 */}
         <Button
           onClick={onRefresh}
-          className="h-9 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+          className="text-white shadow-sm"
           size="sm"
         >
           <Search size={14} className="mr-1.5" />
@@ -356,7 +359,7 @@ export function ProjectHeader({
           <Button
             variant="ghost"
             onClick={clearAllFilters}
-            className="h-9 text-sm text-gray-500 hover:text-gray-700 px-2"
+            className="hover:text-gray-700 px-2"
             size="sm"
           >
             清除过滤
@@ -364,7 +367,7 @@ export function ProjectHeader({
         )}
 
         {
-          !hasAnyFilter && (
+          !hasTimeFilter && (
             <div className="flex items-center gap-2 ml-auto">
               <Select
                 value={refreshInterval.toString()}
