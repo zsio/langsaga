@@ -1,41 +1,29 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import dynamic from "next/dynamic";
 
 import _ from "lodash";
 import { useAsyncEffect } from "ahooks";
 
-import Editor, { DiffEditor, useMonaco, loader } from '@monaco-editor/react'
-import { Button } from "@/components/ui/button";
+import Editor from '@monaco-editor/react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 import {
   Sheet,
-  SheetClose,
   SheetContent,
   SheetDescription,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from "@/components/ui/sheet";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
 import { getRunsByRootId, RunType } from "@/actions/runs";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-const ReactJsonView = dynamic(() => import("react-json-view"), { ssr: false });
 
 export interface RunDetailSheetProps {
   traceId?: string;
@@ -140,8 +128,6 @@ export const RunDetailSheet = React.memo(function RunDetailSheet(
             <ResizablePanel defaultSize={75}>
               <div
                 className="accordion-treeview-root h-full overflow-y-auto p-2"
-                role="tree"
-                aria-orientation="vertical"
               >
                 <Tabs defaultValue="input" className="h-full  flex flex-col">
                   <div>
